@@ -153,17 +153,7 @@
 #### 2.3.2 解耦硬编码：模型选用的参数化配置
 *   **模型选用的参数化**：我们将大模型的选用设置为可配置参数。大模型的供应商品牌 (`model_provider`，如 `ollama`, `openai` 等)、具体的模型名称 (`model_name`)、以及控制发散度的 `temperature` 和单次最大输出字数 `max_tokens` 统一暴露到了 Agent 的 `Settings` 配置中。
 *   **动态装配**：在编译图时，Wrapper 会自动通过标准 API `init_chat_model`，根据 `Settings` 中的配置参数动态生成聊天模型实例，从而将决定模型和云端供应商的最终主导权彻底交还给最上层的应用调度者。
-
-#### 2.3.3 父子级联拓扑（Parent-Child Agent Delegation）与流式事件多路复用
-*   **职责链分治（分层隔离）**：
-    *   外层协调智能体（`outer_agent`）作为项目的大脑和协调者，仅负责接收用户请求，并且只挂载了一个“委派内层工具” `run_inner_agent_tool`。
-    *   内层处理智能体（`inner_agent`）作为具体的工作流执行者，专门挂载了物理分割文本的工具 `split_text_segments`。
-    *   这种父子级联架构在工程上能极大减小单个 Agent 上下文的膨胀速度（Context window bloat），并且为不同层级的智能体定制不同规模、不同偏向性的系统提示词创造了环境。
-*   **流式事件多路复用（Multiplexing）**：
-    *   当外层工具 `run_inner_agent_tool` 委派并启动内层 Agent 执行时，内层 Agent 内部节点更新、中间件拦截以及物理工具输出所产生的流式事件包（Stream Event Chunks），会被外层工具实时监听。
-    *   外层工具会实时捕获这些内层流事件，将其处理、压缩后重新多路复用（Multiplex）发射到外层 Agent 的 stream 事件流中。这保证了在最外层调度 `agent.stream(...)` 的客户端，能够实时、完整地感知并打印出深层工作节点的每一步状态变化（如控制台输出中 `🤖 [内层 Agent - 模型决定调用工具]` 的三级缩进日志）。
-
-#### 2.3.4 一站式 Settings 参数穿透与 SubState 增量汇聚（Substrate 与 Chain 穿透）
+#### 2.3.3 一站式 Settings 参数穿透与 SubState 增量汇聚（Substrate 与 Chain 穿透）
 *   **Chain 穿透（Settings 链条纵向穿透）**：
     *   由于外层 `OuterAgentWrapper.Settings` 继承自外层中间件的 Settings，后者又继承自底层的嵌套工具、内层 Agent 以及内层工具的 Settings，形成了一条由顶向下的完美 Settings 继承链条（Chain）。
     *   因此，在 [main.py](file:///Users/apexwave/Desktop/langchain_yanshi/main.py) 中，客户端仅需要构造一个最外层 `Settings` 实例，在 Agent 运行时通过 `context=settings` 传入上下文。框架便能自动将配置信息穿透直达最深处的工具逻辑（例如控制底层分割后是否变大写 `uppercase=True`），中途不需要任何手动的提取或胶水代码组装。
