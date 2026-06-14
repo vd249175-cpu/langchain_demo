@@ -145,14 +145,14 @@
 智能体层是整个拓扑网络中**最高维度的汇聚点**。在我们的架构中，智能体层主要有以下几个核心设计理念和职责划分：
 
 #### 2.3.1 Wrapper 包裹器作为“图装配器与协调器”
-*   **职责分工**：智能体包裹类（如 [outer_agent.py](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/outer_agent.py) 的 `OuterAgentWrapper` 和 [inner_agent.py](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/inner_agent.py) 的 `InnerAgentWrapper`）并不编写任何实际的业务算法或模型逻辑。它的唯一职责是**充当系统的装配工厂**。
+*   **职责分工**：智能体包裹类（如 [outer_agent.py](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/outer_agent.py) 的 [OuterAgentWrapper](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/outer_agent.py) 和 [inner_agent.py](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/inner_agent.py) 的 [InnerAgentWrapper](file:///Users/apexwave/Desktop/langchain_yanshi/Agents/inner_agent.py)）并不编写任何实际的业务算法或模型逻辑。它的唯一职责是**充当系统的装配工厂**。
 *   **静态装配与动态编译**：
     *   包裹器在初始化时，会自动创建对应的中间件实例。
     *   它将模型（Model）、提示词（System Prompt）以及中间件（Middleware）绑定起来，最终通过标准的 `create_agent` 函数编译（Compile）输出一个 LangGraph 的 `CompiledStateGraph` 实例。
 
-#### 2.3.2 解耦硬编码：模型供应商与参数的参数化配置
-*   **消除 Model 目录**：我们彻底摒弃了繁琐且固化的 `Model/` 目录。大模型的供应商品牌 (`model_provider`，如 `ollama`, `openai` 等)、具体的模型名称 (`model_name`)、以及控制发散度的 `temperature` 和单次最大输出字数 `max_tokens` 统一参数化暴露到了 Agent 的 `Settings` 配置中。
-*   **动态初始装配**：在编译图时，Wrapper 会自动通过标准 API `init_chat_model`，根据 `Settings` 中的配置参数动态生成聊天模型实例，从而将决定模型和云端供应商的最终主导权彻底交还给最上层的应用调度者。
+#### 2.3.2 解耦硬编码：模型选用的参数化配置
+*   **模型选用的参数化**：我们将大模型的选用设置为可配置参数。大模型的供应商品牌 (`model_provider`，如 `ollama`, `openai` 等)、具体的模型名称 (`model_name`)、以及控制发散度的 `temperature` 和单次最大输出字数 `max_tokens` 统一暴露到了 Agent 的 `Settings` 配置中。
+*   **动态装配**：在编译图时，Wrapper 会自动通过标准 API `init_chat_model`，根据 `Settings` 中的配置参数动态生成聊天模型实例，从而将决定模型和云端供应商的最终主导权彻底交还给最上层的应用调度者。
 
 #### 2.3.3 父子级联拓扑（Parent-Child Agent Delegation）与流式事件多路复用
 *   **职责链分治（分层隔离）**：
@@ -163,14 +163,14 @@
     *   当外层工具 `run_inner_agent_tool` 委派并启动内层 Agent 执行时，内层 Agent 内部节点更新、中间件拦截以及物理工具输出所产生的流式事件包（Stream Event Chunks），会被外层工具实时监听。
     *   外层工具会实时捕获这些内层流事件，将其处理、压缩后重新多路复用（Multiplex）发射到外层 Agent 的 stream 事件流中。这保证了在最外层调度 `agent.stream(...)` 的客户端，能够实时、完整地感知并打印出深层工作节点的每一步状态变化（如控制台输出中 `🤖 [内层 Agent - 模型决定调用工具]` 的三级缩进日志）。
 
-#### 2.3.4 一站式 Settings 参数穿透与 SubState 增量汇聚
-*   **Pydantic 参数纵向穿透链（Penetration Chain）**：
-    *   由于外层 `OuterAgentWrapper.Settings` 继承自外层中间件的 Settings，后者又继承自底层的嵌套工具、内层 Agent 以及内层工具的 Settings，形成了一条由顶向下的完美 Settings 继承闭包。
+#### 2.3.4 一站式 Settings 参数穿透与 SubState 增量汇聚（Substrate 与 Chain 穿透）
+*   **Chain 穿透（Settings 链条纵向穿透）**：
+    *   由于外层 `OuterAgentWrapper.Settings` 继承自外层中间件的 Settings，后者又继承自底层的嵌套工具、内层 Agent 以及内层工具的 Settings，形成了一条由顶向下的完美 Settings 继承链条（Chain）。
     *   因此，在 [main.py](file:///Users/apexwave/Desktop/langchain_yanshi/main.py) 中，客户端仅需要构造一个最外层 `Settings` 实例，在 Agent 运行时通过 `context=settings` 传入上下文。框架便能自动将配置信息穿透直达最深处的工具逻辑（例如控制底层分割后是否变大写 `uppercase=True`），中途不需要任何手动的提取或胶水代码组装。
-*   **SubState 状态向上增量汇聚**：
-    *   状态信息的流向与 Settings 正好相反。底层的工具独立定义了它们想要修改的状态字段（如 `innerToolStats`），并声明在各自的 `SubState` 中。
+*   **Substrate 穿透与状态向上增量汇聚**：
+    *   底层的配置与状态被视为统一的运行时基座（Substrate）。底层的工具独立定义了它们想要修改的状态字段（如 `innerToolStats`），并声明在各自的 `SubState` 中。
     *   中间件将所有工具的 `SubState` 进行多继承合并，声明在自身的 `SubState` 中并通过 `state_schema = SubState` 暴露。
-    *   最终，外层的 `OuterAgentWrapper.SubState` 自动完成了各组件状态模式的增量合并与汇聚，构成了该智能体拓扑网络中完备的状态契约。
+    *   最终，外层的 `OuterAgentWrapper.SubState` 自动完成了各组件状态模式的增量合并与汇聚，构成了该智能体拓扑网络中完备的状态契约。通过 `runtime.context`（运行时上下文参数基座 Substrate），实现了跨层级的参数穿透传递，使底层的工具与中间件能够共享并安全读取所需的配置数据。
 
 ---
 
