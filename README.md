@@ -79,11 +79,11 @@
 
 中间件继承自 `AgentMiddleware`，扮演着“承上启下”的网关角色。一个中间件的挂载，在工程上可以被看作是**一种独立能力的挂载**（例如：记忆能力、调用限流能力、终端持久化会话能力等）。使用中间件不仅便于功能扩展，更有利于**状态的彻底分离与解耦**。
 
-#### 2.2.1 核心要素：`Settings`、`SubState` 与 `state_schema` 的编译期注册
-*   **状态隔离与独立声明**：每个中间件内部只定义和维护它自己（以及它所包含的 Tool）所关心的 `SubState` 状态，彻底与其他中间件或 Agent 核心的状态解耦。
-*   **`state_schema` 自动注册**：
-    *   在 LangChain / LangGraph 框架中，中间件类可以通过声明 `state_schema = SubState` 类级别属性，来指示框架在 Agent 编译阶段（`create_agent`）**自动检测并增量注册**该中间件及旗下工具所需的全部状态字段。
-    *   这样，底层的 Tool 虽然由于装饰器限制无法自行在 Agent 中注册状态字段，但是能够借助其宿主中间件的 `state_schema` 轻松完成自动注册与合并。
+#### 2.2.1 核心要素：`Settings`、`SubState`、`tools` 与 `state_schema` 的编译期注册
+*   **状态与工具的隔离解耦**：每个中间件内部只定义和维护它自己所关心的 `SubState` 状态与 `tools` 工具列表，彻底与其他中间件或 Agent 核心的状态和逻辑解耦。
+*   **`state_schema` 与 `tools` 自动注册**：
+    *   在 LangChain / LangGraph 框架中，中间件类可以通过在类级别声明 `state_schema = SubState` 与 `tools = [...]` 类级别属性，来指示框架在 Agent 编译阶段（`create_agent`）**自动检测并增量注册**该中间件及旗下工具所需的全部状态字段与工具实例。
+    *   这样，底层的 Tool 虽然由于装饰器限制无法自行在 Agent 中注册状态字段，但是能够借助其宿主中间件的 `state_schema` 和 `tools` 声明式类属性，轻松完成状态与工具的自动发现、注册与合并。
 
 #### 2.2.2 系统提示词（SystemMessage）的动态注入与命名插槽（Named Slots）
 *   **痛点背景**：单独的 Tool 无法直接拦截 LLM 调用，更无法在模型执行前向其上下文注入或更新系统提示词（System Prompt）。中间件则是天然的切面，能够在模型启动前对输入消息队列进行过滤与修改。
