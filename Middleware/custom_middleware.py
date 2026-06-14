@@ -46,8 +46,11 @@ class CustomMiddleware(AgentMiddleware):
         self.settings = settings or self.Settings()
 
     def before_agent(self, state: SubState, runtime: Runtime) -> dict[str, Any] | None:
-        """在 Agent 图启动时运行，用于自动初始化并注册具名系统消息（记忆插槽）。"""
+        """在 Agent 图启动时运行，用于自动初始化并注册所有具名系统消息（包括长期记忆和协调指令）。"""
+        writer = runtime.stream_writer
         messages = state.get("messages", [])
+        
+        # 1. 注册长期记忆插槽
         message_name = getattr(self.settings, "memory_message_name", "middleware.memory.guidance")
         has_memory = any(getattr(msg, "name", None) == message_name for msg in messages)
         if not has_memory:
@@ -57,37 +60,38 @@ class CustomMiddleware(AgentMiddleware):
                 name=message_name,
                 text=f"你的长期记忆（当前消息标识名为 '{message_name}'）：【{default_memory}】"
             )
-            return {"messages": messages}
-        return None
-
-    def before_model(self, state: SubState, runtime: Runtime) -> dict[str, Any] | None:
-        """在调用大模型前执行，演示如何从 settings 动态提取自定义系统提示词并注入到大模型消息流中。"""
-        writer = runtime.stream_writer
-        before_count = get_nested_count(state, "middlewareStats", "beforeModelRuns") + 1
-        
-        # 1. 动态合并：读取 settings.custom_system_prompt 并与运行门限合并
-        messages = state.get("messages", [])
+            
+        # 2. 注册协调和限制性引导规则
         guidance = (
             f"你目前是外层协调代理。{self.settings.custom_system_prompt} "
             f"注意：最大工具调用门限为 {self.settings.max_tool_runs} 次。"
         )
-        
-        # 2. 注入或更新指定 slot 名为 'middleware.split_text.guidance' 的 SystemMessage
         messages = set_named_system_message(messages, name="middleware.split_text.guidance", text=guidance)
         
         if writer:
             writer({
                 "type": "middleware",
                 "middleware": self.name,
-                "stage": "before_model",
-                "beforeModelRuns": before_count,
+                "stage": "before_agent",
                 "injectedPrompt": guidance
             })
+            
+        return {"messages": messages}
+
+    def before_model(self, state: SubState, runtime: Runtime) -> dict[str, Any] | None:
+        """在调用大模型前执行，进行次数统计跟踪。"""
+        writer = runtime.stream_writer
+        before_count = get_nested_count(state, "middlewareStats", "beforeModelRuns") + 1
         
-        return {
-            "messages": messages,
-            **update_nested_count(state, "middlewareStats", "beforeModelRuns", before_count)
-        }
+        if writer:
+            writer({
+                "type": "middleware",
+                "middleware": self.name,
+                "stage": "before_model",
+                "beforeModelRuns": before_count
+            })
+        
+        return update_nested_count(state, "middlewareStats", "beforeModelRuns", before_count)
 
     def wrap_model_call(self, request: ModelRequest, handler) -> ExtendedModelResponse:
         """包裹模型调用阶段的拦截与跟踪。"""

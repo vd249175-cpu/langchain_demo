@@ -28,8 +28,8 @@ class InnerMiddleware(AgentMiddleware):
         super().__init__()
         self.settings = settings or self.Settings()
 
-    def before_model(self, state: SubState, runtime: Runtime) -> dict[str, Any] | None:
-        """在内层大模型运行前执行，向大模型注入该中间件旗下工具的引导性系统提示词（具名插槽）。"""
+    def before_agent(self, state: SubState, runtime: Runtime) -> dict[str, Any] | None:
+        """在内层 Agent 图启动时执行，向大模型注入该中间件旗下工具的引导性系统提示词（具名插槽）。"""
         writer = runtime.stream_writer
         current_settings = runtime.context or self.settings
         
@@ -48,7 +48,7 @@ class InnerMiddleware(AgentMiddleware):
             writer({
                 "type": "middleware",
                 "middleware": self.name,
-                "stage": "before_model",
+                "stage": "before_agent",
                 "injectedPrompt": instruction
             })
         return {

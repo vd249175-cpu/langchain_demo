@@ -52,10 +52,9 @@ def main():
                 if event_type == "middleware":
                     stage = data.get("stage")
                     middleware_name = data.get("middleware")
-                    if stage == "before_model":
-                        print(f"🔄 [外层中间件钩子] {middleware_name}拦截 -> 阶段: before_model (注入系统提示词: '{data.get('injectedPrompt')}')")
-                    else:
-                        print(f"🔄 [外层中间件钩子] {middleware_name}拦截 -> 阶段: {stage}")
+                    injected = data.get("injectedPrompt")
+                    injected_str = f" (注入系统提示词: '{injected}')" if injected else ""
+                    print(f"🔄 [外层中间件钩子] {middleware_name}拦截 -> 阶段: {stage}{injected_str}")
                 elif event_type == "tool":
                     tool_name = data.get("tool")
                     event = data.get("event")
@@ -94,7 +93,10 @@ def main():
                             elif inner_event == "success":
                                 print(f"      🔧 [内层工具调用] {inner_tool_name} 成功！分割为 {custom_data.get('segmentCount')} 个段。")
                         elif inner_type == "middleware":
-                            print(f"      🔄 [内层中间件钩子] {custom_data.get('middleware')} -> 阶段: {custom_data.get('stage')}")
+                            inner_stage = custom_data.get("stage")
+                            inner_injected = custom_data.get("injectedPrompt")
+                            inner_injected_str = f" (注入系统提示词: '{inner_injected}')" if inner_injected else ""
+                            print(f"      🔄 [内层中间件钩子] {custom_data.get('middleware')} -> 阶段: {inner_stage}{inner_injected_str}")
             
             elif stream_type == "updates":
                 if "model" in data:
