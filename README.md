@@ -162,6 +162,18 @@
     *   中间件将所有工具的 `SubState` 进行多继承合并，声明在自身的 `SubState` 中并通过 `state_schema = SubState` 暴露。
     *   最终，外层的 `OuterAgentWrapper.SubState` 自动完成了各组件状态模式的增量合并与汇聚，构成了该智能体拓扑网络中完备的状态契约。通过 `runtime.context`（运行时上下文参数基座 Substrate），实现了跨层级的参数穿透传递，使底层的工具与中间件能够共享并安全读取所需的配置数据。
 
+#### 2.3.4 基于 Writer 的非阻塞流式事件机制（Streaming via `runtime.stream_writer`）
+*   **`runtime.stream_writer` 实时非阻塞分发**：
+    *   在工具（如 [nested_agent_tool.py](file:///Users/apexwave/Desktop/langchain_yanshi/Tool/nested_agent_tool.py#L90-L104)）或节点中，通过获取并调用 `runtime.stream_writer` 实时向外分发自定义的流式事件包（Stream Event Chunks），实现运行进度的非阻塞传递。
+*   **极佳的本地 Debug 与自省**：
+    *   相比于完全依赖云端的 LangSmith 进行日志回溯与排障，本地捕获 `writer` 流式事件能使本地 Agent Coder（如 IDE 辅助编程智能体）在开发阶段就实时、不间断地感知和自省智能体的执行细节与临时数据。
+*   **方便上层 Web 服务（FastAPI）转发与识别**：
+    *   当 Agent 作为 Web API 后端服务运行时，FastAPI 等框架可基于 SSE (Server-Sent Events) 等机制直接订阅并转发这些细粒度的流式数据包，将运行状态几乎零延迟地推送到前端，显著提升响应体验。
+*   **动态 `interrupt` 信号与控制流传递**：
+    *   通过流式包随时透传当前的 `interrupt` 请求，使得前端 UI 或用户终端能够实时交互并捕获图执行过程中的人工确认断点。
+*   **多智能体（Multi-Agent）架构中的不间断优势**：
+    *   在复杂的嵌套 Agent 网格中，长耗时的子智能体执行若是一个“黑盒”会导致主智能体与客户端产生严重的感知盲区。通过不间断的流式事件回传，多智能体架构能够时刻保持透明性与高响应性。
+
 ---
 
 ## 3. 命名与规范约定 (Naming Conventions)
