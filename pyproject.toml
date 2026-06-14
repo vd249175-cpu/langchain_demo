@@ -1,0 +1,11 @@
+[project]
+name = "langchain-yanshi-demo"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "deepagents>=0.4.12",
+    "langchain>=1.2.13",
+    "langchain-openai>=0.3.0",
+    "langchain-ollama>=1.0.1",
+    "langgraph-checkpoint-sqlite>=3.0.3",
+]
