@@ -1,10 +1,14 @@
 import os
 import sys
 from langchain_core.messages import HumanMessage
+
+# Ensure the parent directory is in sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from Agents.outer_agent import OuterAgentWrapper
 
 def main():
-    print("=== LangChain 层次闭包与参数穿透演示项目 ===")
+    print("=== LangChain 文本切分工具演示 (Demo Split Tool) ===")
     
     # 1. 检验本地 Ollama 服务的配置警示
     if not os.getenv("OLLAMA_MODEL") and not os.getenv("OLLAMA_BASE_URL"):
@@ -118,7 +122,7 @@ def main():
                 else:
                     print(f"📈 [外层 Agent 状态更新] 活跃节点: {list(data.keys())}")
                 
-        print("\n层次闭包演示任务圆满执行完成！")
+        print("\n文本切分工具演示任务圆满执行完成！")
     except Exception as e:
         print(f"\n执行演示遇到错误: {e}", file=sys.stderr)
 

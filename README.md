@@ -4,9 +4,13 @@
 
 ---
 
-## 1. 目录结构与职责划分 (4 Directories)
+## 1. 目录结构与职责划分 (5 Directories)
 
-项目严格划分为 4 个核心目录，各层组件职责清晰、边界明确：
+项目严格划分为 5 个核心目录，各层组件职责清晰、边界明确：
+
+*   [APP/](file:///Users/apexwave/Desktop/langchain_yanshi/APP/): **应用入口层**。存放智能体的启动和演示脚本。
+    *   [demo_split.py](file:///Users/apexwave/Desktop/langchain_yanshi/APP/demo_split.py)：文本切分功能演示脚本。
+    *   [demo_memory.py](file:///Users/apexwave/Desktop/langchain_yanshi/APP/demo_memory.py)：长期记忆工具演示脚本。
 
 *   [Tool/](file:///Users/apexwave/Desktop/langchain_yanshi/Tool/): **工具层**。承载所有智能体可调用的具体工具或包装后的嵌套调用逻辑。
     *   [inner_tool.py](file:///Users/apexwave/Desktop/langchain_yanshi/Tool/inner_tool.py)：底层原子文本切分工具 `split_text_segments`。
@@ -156,7 +160,7 @@
 #### 2.3.3 一站式 Settings 参数穿透与 SubState 增量汇聚（Substrate 与 Chain 穿透）
 *   **Chain 穿透（Settings 链条纵向穿透）**：
     *   由于外层 `OuterAgentWrapper.Settings` 继承自外层中间件的 Settings，后者又继承自底层的嵌套工具、内层 Agent 以及内层工具的 Settings，形成了一条由顶向下的完美 Settings 继承链条（Chain）。
-    *   因此，在 [main.py](file:///Users/apexwave/Desktop/langchain_yanshi/main.py) 中，客户端仅需要构造一个最外层 `Settings` 实例，在 Agent 运行时通过 `context=settings` 传入上下文。框架便能自动将配置信息穿透直达最深处的工具逻辑（例如控制底层分割后是否变大写 `uppercase=True`），中途不需要任何手动的提取或胶水代码组装。
+    *   因此，在 [demo_split.py](file:///Users/apexwave/Desktop/langchain_yanshi/APP/demo_split.py) 中，客户端仅需要构造一个最外层 `Settings` 实例，在 Agent 运行时通过 `context=settings` 传入上下文。框架便能自动将配置信息穿透直达最深处的工具逻辑（例如控制底层分割后是否变大写 `uppercase=True`），中途不需要任何手动的提取或胶水代码组装。
 *   **Substrate 穿透与状态向上增量汇聚**：
     *   底层的配置与状态被视为统一的运行时基座（Substrate）。底层的工具独立定义了它们想要修改的状态字段（如 `innerToolStats`），并声明在各自的 `SubState` 中。
     *   中间件将所有工具的 `SubState` 进行多继承合并，声明在自身的 `SubState` 中并通过 `state_schema = SubState` 暴露。
@@ -196,8 +200,11 @@
 
 在终端中执行：
 ```bash
-# 启动演示项目
-uv run python main.py
+# 启动文本切分工具演示
+uv run python APP/demo_split.py
+
+# 启动记忆工具演示
+uv run python APP/demo_memory.py
 ```
 
 ### 4.2 查看所有可配置参数
